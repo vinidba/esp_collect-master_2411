@@ -32,7 +32,6 @@ PRO Please wait ...
 
 SET TERM OFF ECHO OFF FEED OFF VER OFF HEA OFF PAGES 0 COLSEP ', ' LIN 32767 TRIMS ON TRIM ON TI OFF TIMI OFF ARRAY 100 NUM 20 SQLBL ON BLO . RECSEP OFF;
 
-DEF skip_escp_v1 = '--skip--'
 
 @@escp_config.sql
 @@escp_edb360_config.sql
@@ -42,23 +41,17 @@ VARIABLE vskip_statspack varchar2(20)
 
 -- IF AWR has snapshots for the last 2 hours use it and skip Statspack scripts
 -- IF BOTH AWR AND SNAPSHOT HAVE NO DATA IN THE LAST 2 HOURS, IT WILL RUN BOTH.
-DECLARE
- l_source varchar2(4);
 BEGIN
-    l_source:='&&escp_source.';
     :vskip_statspack := NULL;
-    :vskip_awr := (case when l_source='SP' then '--skip--' else NULL end);
-    IF l_source in ('AUTO','AWR') THEN
-	   BEGIN
-	   	EXECUTE IMMEDIATE 'SELECT ''--skip--''  FROM DBA_HIST_SNAPSHOT WHERE begin_interval_time >= systimestamp-2/24 AND rownum < 2'
-	   	INTO :vskip_statspack;
-	   EXCEPTION
-	   	WHEN OTHERS THEN
- 	   	NULL;
-	   END;
-	END IF;
-	IF    (l_source='AUTO' and :vskip_statspack IS NULL) 
-	THEN
+    :vskip_awr := NULL;
+	BEGIN
+		EXECUTE IMMEDIATE 'SELECT ''--skip--''  FROM DBA_HIST_SNAPSHOT WHERE begin_interval_time >= systimestamp-2/24 AND rownum < 2'
+		INTO :vskip_statspack;
+	EXCEPTION
+		WHEN OTHERS THEN
+ 		NULL;
+	END;
+	IF :vskip_statspack IS NULL THEN
     	BEGIN
     		EXECUTE IMMEDIATE 'SELECT ''--skip--'' FROM perfstat.stats$snapshot WHERE snap_time >= sysdate-2/24 AND rownum < 2'
     		INTO :vskip_awr ;
